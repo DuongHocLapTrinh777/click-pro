@@ -3,13 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <title>Clicker Pro VIP+ Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@700;600;500&display=swap">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Fixed top bar (keeps original UI but adds a fixed header) -->
+  <header class="top-bar" id="topBar" aria-hidden="false">
+    <div class="top-left">
+      <span class="app-name">⭐ Clicker Pro VIP+</span>
+    </div>
+    <div class="top-right" id="deviceInfo">—</div>
+  </header>
+
   <div class="clicker-bg"></div>
-  <div class="game-wrapper">
+
+  <div class="game-wrapper" id="mainGame">
     <h1 class="game-title"><span class="icon-star">⭐</span> Clicker Pro <span class="vip-plus">VIP+</span></h1>
 
     <div class="score-card glassy">
@@ -37,6 +45,14 @@
 
     <div class="signature">💻 Build UI by <b>@DuongHocLapTrinh777</b></div>
   </div>
+
+  <!-- Fixed bottom bar for mobile (FAB + short score) -->
+  <nav class="bottom-bar" id="bottomBar" aria-hidden="false">
+    <button id="mobileClickBtn" class="fab" aria-label="Click mobile">👆</button>
+    <div class="bottom-info">
+      <div id="mobileScoreShort">0</div>
+    </div>
+  </nav>
 
   <script src="script.js"></script>
 </body>
