@@ -1,5 +1,4 @@
-// Clicker Pro - complete logic with mini-game cooldown and persistence
-
+// Clicker Pro - keep previous game logic, only add mobile fixed UI + device info
 // ---------- State & Constants ----------
 let score = 0;
 let clickValue = 1;
@@ -15,14 +14,12 @@ const RESET_DAYS = 30;
 
 // ---------- Cost formulas ----------
 function getRebirthCost(n) {
-  // sequence: 100, 200, 400, 700, 1100, 1600, ...
   if (n === 0) return 100;
   let arr = [100];
   for (let i = 1; i <= n; i++) arr.push(arr[i - 1] + i * 100);
   return arr[n];
 }
 function getVipCost(n) {
-  // 1000, 2000, 3000, ...
   return VIP_COST_BASE * (n + 1);
 }
 
@@ -35,9 +32,7 @@ function saveState() {
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-  } catch (e) {
-    // ignore storage errors
-  }
+  } catch (e) {}
 }
 function loadState() {
   const raw = localStorage.getItem(SAVE_KEY);
@@ -59,12 +54,9 @@ function loadState() {
     rebirthPoint = save.rebirthPoint ?? rebirthPoint;
     vipLevel = save.vipLevel ?? vipLevel;
     miniGameCooldownUntil = save.miniGameCooldownUntil ?? 0;
-  } catch (e) {
-    // parsing error -> ignore
-  }
+  } catch (e) {}
 }
 function updateLastPlayed() {
-  // update lastPlayed in saved object
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return;
   try {
@@ -76,12 +68,10 @@ function updateLastPlayed() {
 
 // ---------- UI Update ----------
 function update() {
-  // core values
   const scoreEl = document.getElementById('score');
   const upgradeCostEl = document.getElementById('upgradeCost');
   const rebirthPointEl = document.getElementById('rebirthPoint');
   const vipLevelEl = document.getElementById('vipLevel');
-
   if (scoreEl) scoreEl.innerText = score;
   if (upgradeCostEl) upgradeCostEl.innerText = upgradeCost;
   if (rebirthPointEl) rebirthPointEl.innerText = rebirthPoint;
@@ -115,32 +105,48 @@ function update() {
     }
   }
 
+  // update mobile short score if present
+  const mobileShort = document.getElementById('mobileScoreShort');
+  if (mobileShort) mobileShort.innerText = score;
+
   saveState();
+  updateDeviceInfo(); // update fixed top-right device info
 }
 
-// ---------- Mini game cooldown helpers ----------
-function miniGameInDelay() {
-  return Date.now() < miniGameCooldownUntil;
+// ---------- Device info (top-right) ----------
+function updateDeviceInfo() {
+  const el = document.getElementById('deviceInfo');
+  if (!el) return;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  let mode = 'Desktop';
+  if (w <= 480) mode = 'Mobile';
+  else if (w <= 900) mode = 'Tablet';
+  el.textContent = `${mode} · ${w}×${h} · DPR:${dpr}`;
 }
+
+// ---------- Mini game cooldown ----------
+function miniGameInDelay() { return Date.now() < miniGameCooldownUntil; }
 function triggerMiniGameDelay() {
   miniGameCooldownUntil = Date.now() + COOLDOWN_MINIGAME_SEC * 1000;
   update();
-  // ensure countdown updates until end
   const interval = setInterval(() => {
     if (Date.now() >= miniGameCooldownUntil) {
       clearInterval(interval);
       update();
     } else {
-      update(); // update display
+      update();
     }
   }, 250);
 }
 
-// ---------- Mini-games (public + hidden store) ----------
+// ---------- Mini-games ----------
 const hiddenMiniGameStore = {
   slotMachine: {
     name: 'Máy Xèng (Slot)',
     play: function () {
+      if (miniGameInDelay()) return;
       const slot = [Math.floor(Math.random() * 7) + 1, Math.floor(Math.random() * 7) + 1, Math.floor(Math.random() * 7) + 1];
       let txt = `🎰 ${slot[0]} | ${slot[1]} | ${slot[2]}<br>`;
       if (slot[0] === slot[1] && slot[1] === slot[2]) {
@@ -165,9 +171,8 @@ const hiddenMiniGameStore = {
       if (miniGameInDelay()) return;
       const btnId = 'fastClickBtn';
       let count = 0;
-      const msg = `<b>Click siêu nhanh trong 3 giây!</b><br><button id="${btnId}">CLICK!</button><br>Điểm: <span id="fastClickCount">0</span>`;
+      const msg = `<b>Click siêu nhanh trong 3 giây!</b><br><button id="${btnId}" class="func-btn" style="padding:14px 20px;margin-top:6px">CLICK!</button><br>Điểm: <span id="fastClickCount">0</span>`;
       showPopup(msg, 3500);
-      // enable click handler on miniGameSection for temporary button
       function clickHandler(e) {
         if (e.target && e.target.id === btnId) {
           count++;
@@ -179,9 +184,9 @@ const hiddenMiniGameStore = {
       container.addEventListener('click', clickHandler);
       setTimeout(() => {
         container.removeEventListener('click', clickHandler);
-        let prize = count * 4 + (vipLevel > 0 ? vipLevel * 10 : 0);
+        const prize = count * 4 + (vipLevel > 0 ? vipLevel * 10 : 0);
         score += prize;
-        showPopup(`Bạn đã click ${count} lần!<br>Nhận ${prize} xu`, 2200);
+        showPopup(`Bạn click ${count} lần → Nhận ${prize} xu`, 2200);
         update();
         triggerMiniGameDelay();
       }, 3000);
@@ -215,85 +220,113 @@ const miniGames = {
 // ---------- Mini game menu ----------
 function showMiniGameMenu() {
   if (miniGameInDelay()) return;
-  const names = Object.entries(miniGames);
   let html = `<b>Chọn mini game:</b><div style="margin:10px 0 0 0;display:flex;flex-direction:column;gap:8px;">`;
-  names.forEach(([key, val]) => {
+  Object.entries(miniGames).forEach(([key, val]) => {
     html += `<button class="func-btn minigame" style="font-size:1em;" onclick="window.playMiniGame('${key}')">${val.name}</button>`;
   });
   html += `</div>`;
-  showPopup(html, 7000);
+  showPopup(html, 6500);
 }
 window.playMiniGame = function (key) {
   if (miniGameInDelay()) return;
   if (miniGames[key]) miniGames[key].play();
 };
 
-// ---------- Core button handlers ----------
-document.getElementById('clickBtn').onclick = function () {
-  score += clickValue;
-  update();
-  saveState();
-};
-document.getElementById('upgradeBtn').onclick = function () {
-  if (score >= upgradeCost) {
-    score -= upgradeCost;
-    clickValue += 1 + vipLevel;
-    upgradeCost = Math.floor(upgradeCost * 1.5);
-    showPopup('Đã nâng cấp click!', 1200);
+// ---------- Core handlers (kept from previous) ----------
+document.addEventListener('DOMContentLoaded', () => {
+  const clickEl = document.getElementById('clickBtn');
+  if (clickEl) clickEl.addEventListener('click', () => {
+    score += clickValue;
     update();
     saveState();
-  } else {
-    showPopup('Không đủ xu để nâng cấp', 1000);
-  }
-};
-document.getElementById('rebirthBtn').onclick = function () {
-  const cost = getRebirthCost(rebirthPoint);
-  if (score >= cost) {
-    rebirthPoint += 1;
-    score = 0;
-    clickValue = 1 + rebirthPoint + vipLevel * 3;
-    upgradeCost = 10;
-    showPopup("Tái sinh thành công!", 1400);
-    update();
-    saveState();
-  } else {
-    showPopup('Chưa đủ xu để tái sinh', 1000);
-  }
-};
-document.getElementById('vipBtn').onclick = function () {
-  const cost = getVipCost(vipLevel);
-  if (score >= cost) {
-    score -= cost;
-    vipLevel += 1;
-    clickValue += 3 * vipLevel;
-    showPopup("Chúc mừng! Đã lên VIP+" + vipLevel, 1600);
-    update();
-    saveState();
-  } else {
-    showPopup('Chưa đủ xu để lên VIP+', 1000);
-  }
-};
-document.getElementById('miniGameBtn').onclick = showMiniGameMenu;
+    updateLastPlayed();
+  });
 
-// ---------- Popup & helpers ----------
+  const upgradeEl = document.getElementById('upgradeBtn');
+  if (upgradeEl) upgradeEl.addEventListener('click', () => {
+    if (score >= upgradeCost) {
+      score -= upgradeCost;
+      clickValue += 1 + vipLevel;
+      upgradeCost = Math.floor(upgradeCost * 1.5);
+      showPopup('Đã nâng cấp click!', 1200);
+      update();
+      saveState();
+      updateLastPlayed();
+    } else {
+      showPopup('Không đủ xu để nâng cấp', 1000);
+    }
+  });
+
+  const rebirthEl = document.getElementById('rebirthBtn');
+  if (rebirthEl) rebirthEl.addEventListener('click', () => {
+    const cost = getRebirthCost(rebirthPoint);
+    if (score >= cost) {
+      rebirthPoint += 1;
+      score = 0;
+      clickValue = 1 + rebirthPoint + vipLevel * 3;
+      upgradeCost = 10;
+      showPopup("Tái sinh thành công!", 1400);
+      update();
+      saveState();
+      updateLastPlayed();
+    } else {
+      showPopup('Chưa đủ xu để tái sinh', 1000);
+    }
+  });
+
+  const vipEl = document.getElementById('vipBtn');
+  if (vipEl) vipEl.addEventListener('click', () => {
+    const cost = getVipCost(vipLevel);
+    if (score >= cost) {
+      score -= cost;
+      vipLevel += 1;
+      clickValue += 3 * vipLevel;
+      showPopup("Chúc mừng! Đã lên VIP+" + vipLevel, 1600);
+      update();
+      saveState();
+      updateLastPlayed();
+    } else {
+      showPopup('Chưa đủ xu để lên VIP+', 1000);
+    }
+  });
+
+  const miniBtn = document.getElementById('miniGameBtn');
+  if (miniBtn) miniBtn.addEventListener('click', () => {
+    showMiniGameMenu();
+    updateLastPlayed();
+  });
+
+  // Mobile FAB (fixed bottom) — triggers same click logic
+  const mobileFab = document.getElementById('mobileClickBtn');
+  if (mobileFab) {
+    mobileFab.addEventListener('click', () => {
+      score += clickValue;
+      update();
+      saveState();
+      updateLastPlayed();
+      if (navigator.vibrate) navigator.vibrate(8);
+    });
+  }
+
+  // keep lastPlayed fresh on interactions
+  ['clickBtn', 'upgradeBtn', 'rebirthBtn', 'vipBtn', 'miniGameBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', updateLastPlayed, { passive: true });
+  });
+});
+
+// ---------- Popup helper ----------
 function showPopup(msg, t = 1700) {
   const mini = document.getElementById("miniGameSection");
   if (!mini) return;
   mini.innerHTML = `<div>${msg}</div>`;
   setTimeout(() => {
-    // only clear if unchanged (prevents cutting new messages accidentally)
     if (mini.innerHTML.includes(msg)) mini.innerHTML = '';
   }, t);
 }
 
-// keep lastPlayed fresh on many interactions
-["clickBtn", "upgradeBtn", "rebirthBtn", "vipBtn", "miniGameBtn"].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('click', updateLastPlayed, { passive: true });
-});
-
 // ---------- Init ----------
 loadState();
 update();
-// update countdown frequently for smoother display
+window.addEventListener('resize', updateDeviceInfo);
 setInterval(() => update(), 300);
