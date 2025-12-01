@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Clicker Pro VIP+ Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Đã thêm maximum-scale=1 và user-scalable=no để vô hiệu hóa zoom trên mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -48,7 +49,7 @@
 
   <!-- Fixed bottom bar for mobile (FAB + short score) -->
   <nav class="bottom-bar" id="bottomBar" aria-hidden="false">
-    <button id="mobileClickBtn" class="fab" aria-label="Click mobile">Mày bấm mày Gayyyyy ( ͡❛ ͜ʖ ͡❛)</button>
+    <button id="mobileClickBtn" class="fab" aria-label="Click mobile">👆 Mày click mày Gayyyyy ( ͡❛ ͜ʖ ͡❛)</button>
     <div class="bottom-info">
       <div id="mobileScoreShort">0</div>
     </div>
@@ -57,4 +58,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
